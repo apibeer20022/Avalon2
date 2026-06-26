@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avalon Online - Prototype</title>
+    <!-- ใช้ Tailwind CSS แบบ CDN เพื่อความสวยงามอย่างรวดเร็ว -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { background-color: #1a1a2e; color: #e2e8f0; font-family: sans-serif; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-2xl mx-auto bg-[#16213e] p-8 rounded-2xl shadow-2xl border border-[#0f3460]">
+        <h1 class="text-3xl font-bold text-center text-[#e94560] mb-6">👑 Avalon Role Shuffler 🐺</h1>
+        <p class="text-sm text-center text-gray-400 mb-6">(ระบบจำลองการแจกบทบาทสำหรับผู้เล่น 5 คน)</p>
+
+        <!-- ส่วนกรอกชื่อเพื่อน -->
+        <div class="space-y-4 mb-6">
+            <h3 class="text-lg font-semibold">👤 ใส่ชื่อผู้เล่นทั้ง 5 คน:</h3>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+                <input type="text" id="p1" value="เบียร์" class="bg-[#0f3460] p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <input type="text" id="p2" value="ต้า" class="bg-[#0f3460] p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <input type="text" id="p3" value="นนท์" class="bg-[#0f3460] p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <input type="text" id="p4" value="เมย์" class="bg-[#0f3460] p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+                <input type="text" id="p5" value="บอย" class="bg-[#0f3460] p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-[#e94560]">
+            </div>
+            <button onclick="startGame()" class="w-full bg-[#e94560] hover:bg-[#ff6b81] text-white font-bold py-3 px-4 rounded-xl transition duration-200 cursor-pointer text-center">
+                🎲 สุ่มบทบาทและเริ่มเกม
+            </button>
+        </div>
+
+        <hr class="border-gray-700 my-6">
+
+        <!-- ส่วนแสดงผลลัพธ์มุมมองของผู้เล่น -->
+        <div>
+            <h3 class="text-lg font-semibold mb-3">👁️ เลือกผู้เล่นเพื่อดูข้อมูลลับ (จำลองหน้าจอของแต่ละคน):</h3>
+            <div id="playerButtons" class="flex flex-wrap gap-2 mb-6">
+                <!-- ปุ่มรายชื่อจะขึ้นตรงนี้หลังกดสุ่ม -->
+            </div>
+
+            <!-- กล่องแสดงข้อมูลลับ -->
+            <div id="secretView" class="hidden bg-[#0f3460] p-6 rounded-xl border border-dashed border-[#e94560]">
+                <h4 id="viewingName" class="text-xl font-bold text-[#e94560] mb-2"></h4>
+                <p class="text-lg">บทบาทของคุณคือ: <span id="yourRole" class="font-bold underline"></span></p>
+                <div id="allianceInfo" class="mt-4 p-3 bg-[#1a1a2e] rounded text-sm text-yellow-300"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ข้อมูลเกมแมตช์นั้นๆ (Game State)
+        let gameState = {
+            players: [],
+            roles: ["Merlin (ดี)", "Percival (ดี)", "Loyal Servant (ดี)", "Assassin (ร้าย)", "Morgana (ร้าย)"]
+        };
+
+        function startGame() {
+            // 1. ดึงชื่อจาก Input
+            gameState.players = [
+                { name: document.getElementById('p1').value, role: '', side: '' },
+                { name: document.getElementById('p2').value, role: '', side: '' },
+                { name: document.getElementById('p3').value, role: '', side: '' },
+                { name: document.getElementById('p4').value, role: '', side: '' },
+                { name: document.getElementById('p5').value, role: '', side: '' }
+            ];
+
+            // ตรวจสอบว่ากรอกครบไหม
+            if(gameState.players.some(p => p.name.trim() === "")) {
+                alert("กรุณากรอกชื่อให้ครบทุกคนครับ!");
+                return;
+            }
+
+            // 2. สุ่มลำดับบทบาท (Shuffle)
+            let shuffledRoles = [...gameState.roles].sort(() => Math.random() - 0.5);
+
+            // 3. แจกบทบาทให้ผู้เล่นแต่ละคน
+            gameState.players.forEach((player, index) => {
+                player.role = shuffledRoles[index];
+                player.side = player.role.includes("ดี") ? "Good" : "Evil";
+            });
+
+            // 4. สร้างปุ่มจำลองหน้าจอของผู้เล่นแต่ละคน
+            const btnContainer = document.getElementById('playerButtons');
+            btnContainer.innerHTML = '';
+            
+            gameState.players.forEach((player, index) => {
+                let btn = document.createElement('button');
+                btn.className = "bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg cursor-pointer transition";
+                btn.innerText = `📱 หน้าจอของ [ ${player.name} ]`;
+                btn.onclick = () => showSecretView(index);
+                btnContainer.appendChild(btn);
+            });
+
+            // ซ่อนหน้าจอข้อมูลเก่าไว้ก่อน
+            document.getElementById('secretView').classList.add('hidden');
+            alert("สุ่มบทบาทเรียบร้อย! ลองกดดูหน้าจอของแต่ละคนด้านล่างได้เลยครับ");
+        }
+
+        function showSecretView(playerIndex) {
+            const player = gameState.players[playerIndex];
+            document.getElementById('secretView').classList.remove('hidden');
+            document.getElementById('viewingName').innerText = `🔒 ข้อมูลลับของ ${player.name}`;
+            document.getElementById('yourRole').innerText = player.role;
+
+            let infoText = "";
+
+            // กฎข้อมูลลับของแต่ละบทบาท (Logic สำคัญของ Avalon)
+            if (player.role.includes("Merlin")) {
+                // เมอร์ลินเห็นฝั่งร้ายทั้งหมด (ในที่นี้คือ Assassin และ Morgana)
+                let evils = gameState.players.filter(p => p.side === "Evil").map(p => p.name);
+                infoText = `🔮 นิมิตจากสวรรค์: คุณเห็นผู้รับใช้สายมืด (ฝั่งร้าย) ได้แก่: [ ${evils.join(', ')} ] (จงชี้นำทางฝั่งดีโดยอย่าให้พวกมันจับได้!)`;
+            } 
+            else if (player.role.includes("Percival")) {
+                // เพอร์ซิวัลจะเห็น Merlin และ Morgana ขึ้นเป็นแสงสว่าง แต่แยกไม่ออกว่าใครเป็นใคร
+                let candidates = gameState.players.filter(p => p.role.includes("Merlin") || player.role.includes("Morgana") ? p.role.includes("Morgana") : false || p.role.includes("Merlin"));
+                // เพื่อความชัวร์ ดึงชื่อคนที่ถือการ์ดสองใบนี้มา
+                let names = gameState.players.filter(p => p.role.includes("Merlin") || p.role.includes("Morgana")).map(p => p.name);
+                infoText = `🛡️ หน้าที่อัศวิน: คุณเห็นแสงสว่างแห่งมนตราจาก: [ ${names.join(' และ ')} ] (คนหนึ่งคือเมอร์ลินตัวจริง อีกคนคือมอร์กาน่าตัวปลอม จงสืบให้ถูกคน!)`;
+            } 
+            else if (player.side === "Evil") {
+                // ฝั่งร้าย (ยกเว้นโหมดพิเศษ) จะมองเห็นกันเอง
+                let teammates = gameState.players.filter((p, idx) => p.side === "Evil" && idx !== playerIndex).map(p => p.name);
+                infoText = `🐺 แผนการสายมืด: เพื่อนร่วมกลุ่มฝั่งร้ายของคุณคือ: [ ${teammates.join(', ')} ] (จงปั่นหัวฝั่งดีและทำลายภารกิจซะ!)`;
+            } 
+            else {
+                // ฝั่งดีทั่วไป (Loyal Servant)
+                infoText = `💙 อัศวินผู้ภักดี: คุณไม่รู้ข้อมูลของใครเลย จงใช้เหตุผลและความไว้ใจในการโหวตหาพวกพ้องฝั่งดี!`;
+            }
+
+            document.getElementById('allianceInfo').innerText = infoText;
+        }
+    </script>
+</body>
+</html>

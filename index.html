@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>⚔️ Avalon — The Resistance</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #09070f;
+    --bg2:      #110d1e;
+    --bg3:      #1a1530;
+    --gold:     #c9922a;
+    --gold-lt:  #e8c46a;
+    --text:     #e0d4b8;
+    --muted:    #7a6a50;
+    --good:     #6ec6ff;
+    --evil:     #ff6b6b;
+    --purple:   #b07eff;
+    --border:   rgba(201,146,42,0.18);
+  }
+
+  body {
+    font-family: 'Crimson Text', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(90,40,140,0.18) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(201,146,42,0.08) 0%, transparent 60%);
+  }
+
+  #app { max-width: 560px; margin: 0 auto; padding: 16px 14px 60px; }
+
+  /* ── HEADER ── */
+  .site-header { text-align: center; padding: 32px 0 24px; }
+  .site-header .crest { font-size: 48px; line-height: 1; margin-bottom: 6px; }
+  .site-header h1 {
+    font-family: 'Cinzel', serif; font-size: 32px; font-weight: 700;
+    color: var(--gold-lt); letter-spacing: 6px;
+    text-shadow: 0 0 30px rgba(201,146,42,0.4);
+  }
+  .site-header .sub { font-size: 11px; color: var(--muted); letter-spacing: 3px; margin-top: 4px; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 2px;
+    color: var(--gold); margin-bottom: 14px; text-transform: uppercase;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 11px 22px; border-radius: 8px; border: none;
+    font-family: 'Cinzel', serif; font-size: 13px; font-weight: 600; letter-spacing: 1px;
+    cursor: pointer; transition: all .15s; width: auto;
+  }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-gold  { background: linear-gradient(135deg,#8a5e0e,#c9922a,#e8c46a); color: #1a0c00; }
+  .btn-gold:hover:not(:disabled)  { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-red   { background: linear-gradient(135deg,#5a1010,#a02020); color: #ffe8e8; }
+  .btn-green { background: linear-gradient(135deg,#0e4a20,#1a7a35); color: #e8ffe8; }
+  .btn-ghost { background: transparent; color: var(--gold); border: 1px solid rgba(201,146,42,0.4); }
+  .btn-ghost:hover:not(:disabled) { background: rgba(201,146,42,0.08); }
+  .btn-block { width: 100%; }
+  .btn-sm { padding: 7px 14px; font-size: 12px; }
+
+  /* ── INPUT ── */
+  .input {
+    width: 100%; padding: 12px 14px; border-radius: 8px;
+    border: 1px solid rgba(201,146,42,0.25);
+    background: var(--bg3); color: var(--text);
+    font-family: 'Crimson Text', serif; font-size: 16px;
+    outline: none; transition: border-color .2s;
+  }
+  .input:focus { border-color: var(--gold); }
+  .input::placeholder { color: var(--muted); }
+
+  /* ── TAG ── */
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 11px; font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: 1px;
+    margin-left: 6px;
+  }
+  .tag-gold   { background: rgba(201,146,42,0.15); color: var(--gold-lt);  border: 1px solid rgba(201,146,42,0.3); }
+  .tag-blue   { background: rgba(110,198,255,0.12); color: var(--good);    border: 1px solid rgba(110,198,255,0.3); }
+  .tag-red    { background: rgba(255,107,107,0.12); color: var(--evil);    border: 1px solid rgba(255,107,107,0.3); }
+  .tag-purple { background: rgba(176,126,255,0.12); color: var(--purple);  border: 1px solid rgba(176,126,255,0.3); }
+
+  /* ── QUEST TRACK ── */
+  .quest-track { display: flex; gap: 6px; margin-bottom: 12px; }
+  .quest-pip {
+    flex: 1; text-align: center; padding: 10px 4px 8px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg3); transition: all .3s;
+  }
+  .quest-pip.active  { border: 2px solid var(--gold); background: rgba(201,146,42,0.08); }
+  .quest-pip.success { background: rgba(14,74,32,0.6); border-color: #1a7a35; }
+  .quest-pip.fail    { background: rgba(90,16,16,0.6); border-color: #a02020; }
+  .quest-pip .pip-icon { font-size: 20px; }
+  .quest-pip .pip-size { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .quest-pip .pip-dbl  { font-size: 9px; color: var(--evil); }
+
+  /* ── SCORE BAR ── */
+  .score-bar { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; font-size: 14px; }
+
+  /* ── PLAYER LIST ── */
+  .player-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 15px;
+  }
+  .player-row:last-child { border-bottom: none; }
+
+  /* ── ROLE REVEAL ── */
+  .role-card {
+    border-radius: 10px; padding: 16px 18px;
+    border: 1px solid;
+  }
+  .role-card.good { border-color: rgba(110,198,255,0.3); background: rgba(110,198,255,0.05); }
+  .role-card.evil { border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.05); }
+
+  /* ── TEAM PICKER ── */
+  .player-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 20px; margin: 4px;
+    border: 2px solid rgba(255,255,255,0.08);
+    background: transparent; color: var(--muted);
+    font-family: 'Crimson Text', serif; font-size: 15px; cursor: pointer;
+    transition: all .15s;
+  }
+  .player-chip.selected {
+    border-color: var(--gold); background: rgba(201,146,42,0.12); color: var(--gold-lt);
+  }
+  .player-chip.not-leader { cursor: default; }
+
+  /* ── VOTE BUTTONS ── */
+  .vote-row { display: flex; gap: 10px; }
+  .vote-row .btn { flex: 1; }
+
+  /* ── LOG ── */
+  .log-scroll { max-height: 150px; overflow-y: auto; }
+  .log-line { font-size: 13px; color: var(--muted); padding: 2px 0; }
+
+  /* ── END SCREEN ── */
+  .end-banner { text-align: center; padding: 8px 0 16px; }
+  .end-banner .trophy { font-size: 56px; }
+  .end-banner h2 { font-family:'Cinzel',serif; font-size: 22px; margin-top: 8px; }
+
+  /* ── REVEAL TABLE ── */
+  .reveal-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px;
+  }
+  .reveal-row:last-child { border-bottom: none; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 20px; font-size: 14px; color: var(--text);
+    transition: transform .3s; z-index: 999; white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── DIVIDER ── */
+  .sep { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* ── NIGHT OVERLAY ── */
+  .night-info {
+    background: var(--bg3); border-radius: 8px; padding: 12px 14px;
+    font-size: 14px; margin-top: 10px; line-height: 1.7;
+  }
+
+  .flex-gap { display: flex; gap: 10px; }
+  .flex-1 { flex: 1; }
+  .mt8 { margin-top: 8px; }
+  .mt14 { margin-top: 14px; }
+  .tc { text-align: center; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  /* ── CARD REVEAL ── */
+  .reveal-stage {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    justify-content: center; margin: 16px 0;
+  }
+  .flip-card {
+    width: 80px; height: 110px;
+    perspective: 600px; cursor: default;
+  }
+  .flip-inner {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(.4,0,.2,1);
+  }
+  .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+  .flip-front, .flip-back {
+    position: absolute; width: 100%; height: 100%;
+    border-radius: 10px; backface-visibility: hidden;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border: 2px solid;
+  }
+  .flip-front {
+    background: linear-gradient(135deg, #1a1530, #2a1e3a);
+    border-color: rgba(201,146,42,0.3);
+    font-size: 28px;
+  }
+  .flip-back {
+    transform: rotateY(180deg);
+    font-size: 32px;
+  }
+  .flip-back.success {
+    background: linear-gradient(135deg,#0a2e14,#0e4a20);
+    border-color: #1a7a35;
+  }
+  .flip-back.fail {
+    background: linear-gradient(135deg,#2e0a0a,#5a1010);
+    border-color: #a02020;
+  }
+  .flip-back .card-label {
+    font-family: 'Cinzel', serif; font-size: 10px; margin-top: 6px;
+    letter-spacing: 1px;
+  }
+  .flip-back.success .card-label { color: #4ecf6a; }
+  .flip-back.fail    .card-label { color: #ff8080; }
+
+  .reveal-counter {
+    text-align: center; font-family: 'Cinzel', serif;
+    font-size: 13px; color: var(--muted); letter-spacing: 2px; margin-bottom: 8px;
+  }
+  .reveal-suspense {
+    text-align: center; font-size: 28px;
+    animation: pulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes pulse { from { opacity:0.4; transform:scale(0.95); } to { opacity:1; transform:scale(1.05); } }
+
+  .result-banner {
+    text-align: center; padding: 14px; border-radius: 10px; margin-top: 14px;
+    font-family: 'Cinzel', serif;
+  }
+  .result-banner.success { background: rgba(14,74,32,0.4); border: 1px solid #1a7a35; }
+  .result-banner.fail    { background: rgba(90,16,16,0.4); border: 1px solid #a02020; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SUPABASE INIT
+// ═══════════════════════════════════════════════
+const SUPA_URL = 'https://dmfkuanwvynixrssfcux.supabase.co';
+const SUPA_KEY = 'sb_publishable_A4Hsnu8CxB1rK4wh7vBNDQ_AB-kdNVC';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+const CHANNEL = 'avalon-room-1';
+const STORAGE_KEY = 'avalon_gamestate_v1';
+
+// ═══════════════════════════════════════════════
+// GAME CONSTANTS
+// ═══════════════════════════════════════════════
+const ROLES = {
+  Merlin:   { team:'good', emoji:'🔮', color:'#6ec6ff', desc:'รู้ว่าใครชั่ว (ยกเว้น Mordred) — ต้องปิดบังตัวเอง' },
+  Percival: { team:'good', emoji:'⚔️',  color:'#a8e6a3', desc:'รู้ว่าใครอาจเป็น Merlin (รวม Morgana ถ้ามี)' },
+  Loyal1:   { team:'good', emoji:'🛡️',  color:'#a8e6a3', desc:'ผู้รับใช้แห่ง Arthur — ไม่มีข้อมูลพิเศษ' },
+  Loyal2:   { team:'good', emoji:'🛡️',  color:'#a8e6a3', desc:'ผู้รับใช้แห่ง Arthur — ไม่มีข้อมูลพิเศษ' },
+  Loyal3:   { team:'good', emoji:'🛡️',  color:'#a8e6a3', desc:'ผู้รับใช้แห่ง Arthur — ไม่มีข้อมูลพิเศษ' },
+  Loyal4:   { team:'good', emoji:'🛡️',  color:'#a8e6a3', desc:'ผู้รับใช้แห่ง Arthur — ไม่มีข้อมูลพิเศษ' },
+  Morgana:  { team:'evil', emoji:'🌙', color:'#ff6b6b', desc:'ปรากฏให้ Percival เห็นว่าอาจเป็น Merlin' },
+  Assassin: { team:'evil', emoji:'🗡️',  color:'#ff6b6b', desc:'ถ้าฝ่ายดีชนะ — ยิง Merlin เพื่อชนะแทน' },
+  Oberon:   { team:'evil', emoji:'🦇', color:'#b07eff', desc:'ฝ่ายชั่ว แต่ไม่รู้จักพวกเดียวกัน และพวกก็ไม่รู้จัก' },
+  Mordred:  { team:'evil', emoji:'💀', color:'#ff6b6b', desc:'ฝ่ายชั่ว แต่ Merlin มองไม่เห็น' },
+  Minion1:  { team:'evil', emoji:'🗡️',  color:'#ff6b6b', desc:'ผู้รับใช้แห่ง Mordred' },
+  Minion2:  { team:'evil', emoji:'🗡️',  color:'#ff6b6b', desc:'ผู้รับใช้แห่ง Mordred' },
+};
+
+const ROLE_CONFIGS = {
+  5:  { good:['Merlin','Percival','Loyal1'],                    evil:['Morgana','Assassin'] },
+  6:  { good:['Merlin','Percival','Loyal1','Loyal2'],           evil:['Morgana','Assassin'] },
+  7:  { good:['Merlin','Percival','Loyal1','Loyal2'],           evil:['Morgana','Assassin','Oberon'] },
+  8:  { good:['Merlin','Percival','Loyal1','Loyal2','Loyal3'],  evil:['Morgana','Assassin','Mordred'] },
+  9:  { good:['Merlin','Percival','Loyal1','Loyal2','Loyal3'],  evil:['Morgana','Assassin','Mordred','Minion1'] },
+  10: { good:['Merlin','Percival','Loyal1','Loyal2','Loyal3','Loyal4'], evil:['Morgana','Assassin','Mordred','Minion1'] },
+};
+
+const QUEST_CFG = {
+  5:  { sizes:[2,3,2,3,3], dbl:[0,0,0,0,0] },
+  6:  { sizes:[2,3,4,3,4], dbl:[0,0,0,0,0] },
+  7:  { sizes:[2,3,3,4,4], dbl:[0,0,0,1,0] },
+  8:  { sizes:[3,4,4,5,5], dbl:[0,0,0,1,0] },
+  9:  { sizes:[3,4,4,5,5], dbl:[0,0,0,1,0] },
+  10: { sizes:[3,4,4,5,5], dbl:[0,0,0,1,0] },
+};
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let myName = localStorage.getItem('avalon_myname') || '';
+let game = null;        // full game state from Supabase
+let channel = null;
+
+// Local reveal animation state (not synced — each client runs independently)
+let _revealState = null; // { cards:[], revealed:0, done:false, pendingGame:null }
+
+// ═══════════════════════════════════════════════
+// SUPABASE STORAGE (using key-value in realtime_messages workaround)
+// We use Supabase's broadcast channel for realtime sync
+// and store game state in Supabase DB table
+// ═══════════════════════════════════════════════
+
+async function ensureTable() {
+  // Try to create table via RPC — won't fail if exists
+  // We'll use localStorage as fallback + broadcast for sync
+  // (Supabase free tier: use broadcast channel + localStorage hybrid)
+}
+
+async function pushState(newGame) {
+  game = newGame;
+  // Broadcast to all clients
+  if (channel) {
+    await channel.send({ type:'broadcast', event:'state', payload: newGame });
+  }
+  // Also persist in localStorage for refresh resilience
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(newGame));
+}
+
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════
+// GAME LOGIC
+// ═══════════════════════════════════════════════
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [b[i],b[j]] = [b[j],b[i]];
+  }
+  return b;
+}
+
+function initGame(players) {
+  const n = players.length;
+  const cfg = ROLE_CONFIGS[n];
+  const roles = shuffle([...cfg.good,...cfg.evil]);
+  const assignments = {};
+  players.forEach((p,i) => assignments[p] = roles[i]);
+  return {
+    phase: 'night',
+    players,
+    host: players[0],
+    assignments,
+    leader: 0,
+    quests: [],
+    currentQuest: 0,
+    proposeTeam: [],
+    voteResults: {},
+    questResults: {},
+    rejectStreak: 0,
+    nightReady: {},
+    winner: null,
+    log: [`🎮 เกมเริ่มแล้ว! ผู้เล่น ${n} คน`],
+    ts: Date.now(),
+  };
+}
+
+function getNightInfo(name, assignments) {
+  const role = assignments[name];
+  const lines = [];
+  const evil = Object.entries(assignments)
+    .filter(([,r]) => ROLES[r]?.team==='evil' && r!=='Oberon').map(([n])=>n);
+  const merlinLike = Object.entries(assignments)
+    .filter(([,r]) => r==='Merlin'||r==='Morgana').map(([n])=>n);
+
+  if (role==='Merlin') {
+    const see = Object.entries(assignments)
+      .filter(([,r]) => ROLES[r]?.team==='evil' && r!=='Mordred').map(([n])=>n);
+    lines.push(`👁️ คนชั่วที่คุณมองเห็น: <strong>${see.join(', ')||'(ไม่มี)'}</strong>`);
+  } else if (role==='Percival') {
+    lines.push(`👁️ คนที่อาจเป็น Merlin: <strong>${merlinLike.join(', ')||'(ไม่มี)'}</strong>`);
+  } else if (ROLES[role]?.team==='evil' && role!=='Oberon') {
+    const others = evil.filter(n=>n!==name);
+    lines.push(`👁️ พวกเดียวกัน: <strong>${others.join(', ')||'(ไม่มีคนอื่น)'}</strong>`);
+  } else {
+    lines.push('👁️ คุณไม่มีข้อมูลพิเศษ — เชื่อสัญชาตญาณ');
+  }
+  return lines;
+}
+
+// ═══════════════════════════════════════════════
+// SUPABASE REALTIME CHANNEL
+// ═══════════════════════════════════════════════
+function connectChannel() {
+  if (channel) db.removeChannel(channel);
+  channel = db.channel(CHANNEL, { config:{ broadcast:{ self:true } } });
+  channel
+    .on('broadcast', { event:'state' }, ({ payload }) => {
+      // Accept newer state
+      if (!game || payload.ts >= game.ts) {
+        // Clear reveal state if phase changed away from reveal
+        if (game && game.phase === 'reveal' && payload.phase !== 'reveal') {
+          if (_revealState?.timer) clearInterval(_revealState.timer);
+          _revealState = null;
+        }
+        game = payload;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
+        render();
+      }
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        // Request current state from others
+        channel.send({ type:'broadcast', event:'req_state', payload:{ from: myName } });
+      }
+    });
+
+  // When someone requests state, host responds
+  channel.on('broadcast', { event:'req_state' }, () => {
+    if (game && myName === game.host) {
+      channel.send({ type:'broadcast', event:'state', payload: game });
+    } else if (game) {
+      channel.send({ type:'broadcast', event:'state', payload: game });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════
+async function hostGame(name) {
+  myName = name.trim();
+  localStorage.setItem('avalon_myname', myName);
+  const lobby = {
+    phase: 'lobby', players: [myName], host: myName,
+    assignments:{}, leader:0, quests:[], currentQuest:0,
+    proposeTeam:[], voteResults:{}, questResults:{},
+    rejectStreak:0, nightReady:{}, winner:null, log:[], ts:Date.now()
+  };
+  await pushState(lobby);
+  render();
+}
+
+async function joinGame(name) {
+  myName = name.trim();
+  localStorage.setItem('avalon_myname', myName);
+  if (!game || game.phase !== 'lobby') { toast('ไม่พบห้อง หรือเกมเริ่มไปแล้ว'); return; }
+  if (game.players.includes(myName)) { toast('ชื่อซ้ำ กรุณาใช้ชื่ออื่น'); return; }
+  if (game.players.length >= 10)     { toast('ห้องเต็มแล้ว (สูงสุด 10 คน)'); return; }
+  const g = clone(game);
+  g.players.push(myName);
+  g.ts = Date.now();
+  await pushState(g);
+  render();
+}
+
+async function startGame() {
+  if (!game || game.players.length < 5) { toast('ต้องการผู้เล่นอย่างน้อย 5 คน'); return; }
+  const g = initGame(game.players);
+  await pushState(g);
+}
+
+async function confirmNight() {
+  const g = clone(game);
+  g.nightReady[myName] = true;
+  if (Object.keys(g.nightReady).length >= g.players.length) {
+    g.phase = 'propose';
+    g.log.push(`🌅 ทุกคนพร้อมแล้ว — Leader: ${g.players[g.leader]}`);
+  }
+  g.ts = Date.now();
+  await pushState(g);
+}
+
+async function togglePropose(name) {
+  const g = clone(game);
+  if (g.players[g.leader] !== myName) { toast('คุณไม่ใช่ Leader รอบนี้'); return; }
+  const max = QUEST_CFG[g.players.length].sizes[g.currentQuest];
+  const idx = g.proposeTeam.indexOf(name);
+  if (idx >= 0) { g.proposeTeam.splice(idx,1); }
+  else {
+    if (g.proposeTeam.length >= max) { toast(`เลือกได้สูงสุด ${max} คน`); return; }
+    g.proposeTeam.push(name);
+  }
+  g.ts = Date.now();
+  await pushState(g);
+}
+
+async function submitProposal() {
+  const g = clone(game);
+  const max = QUEST_CFG[g.players.length].sizes[g.currentQuest];
+  if (g.proposeTeam.length !== max) { toast(`ต้องเลือกพอดี ${max} คน`); return; }
+  g.phase = 'vote';
+  g.voteResults = {};
+  g.log.push(`⚔️ ${g.players[g.leader]} เสนอทีม: ${g.proposeTeam.join(', ')}`);
+  g.ts = Date.now();
+  await pushState(g);
+}
+
+async function castVote(approve) {
+  if (game.voteResults[myName] !== undefined) { toast('คุณโหวตแล้ว'); return; }
+  const g = clone(game);
+  g.voteResults[myName] = approve;
+  if (Object.keys(g.voteResults).length >= g.players.length) {
+    const yes = Object.values(g.voteResults).filter(Boolean).length;
+    const no  = g.players.length - yes;
+    const passed = yes > g.players.length / 2;
+    g.log.push(`🗳️ โหวต ✅${yes} / ❌${no} — ${passed?'ผ่าน!':'ล้มเหลว'}`);
+    if (passed) {
+      g.phase = 'quest'; g.questResults = {}; g.rejectStreak = 0;
+    } else {
+      g.rejectStreak++;
+      if (g.rejectStreak >= 5) {
+        g.winner = 'evil'; g.phase = 'end';
+        g.log.push('💀 ปฏิเสธ 5 ครั้งติด — ฝ่ายชั่วชนะ!');
+      } else {
+        g.leader = (g.leader+1) % g.players.length;
+        g.phase = 'propose'; g.proposeTeam = [];
+        g.log.push(`🔄 Leader ใหม่: ${g.players[g.leader]} (ปฏิเสธ ${g.rejectStreak}/5)`);
+      }
+    }
+  }
+  g.ts = Date.now();
+  await pushState(g);
+}
+
+async function castQuestCard(success) {
+  if (!game.proposeTeam.includes(myName)) { toast('คุณไม่ได้อยู่ในทีมนี้'); return; }
+  if (game.questResults[myName] !== undefined) { toast('คุณส่งการ์ดแล้ว'); return; }
+  const role = game.assignments[myName];
+  if (ROLES[role]?.team==='good' && !success) { toast('ฝ่ายดีส่ง Fail ไม่ได้'); return; }
+  const g = clone(game);
+  g.questResults[myName] = success ? 'success' : 'fail';
+  if (Object.keys(g.questResults).length >= g.proposeTeam.length) {
+    // All cards submitted — move to reveal phase
+    // Shuffle the card values for suspense (don't reveal who played what)
+    const cardValues = shuffle(Object.values(g.questResults));
+    g.revealCards = cardValues;   // shuffled array of 'success'/'fail'
+    g.phase = 'reveal';
+    g.log.push(`🃏 ส่งการ์ดครบแล้ว! กำลังเปิดผล...`);
+  }
+  g.ts = Date.now();
+  await pushState(g);
+}
+
+async function resolveQuest() {
+  // Called after reveal animation completes — compute result and advance game
+  const g = clone(game);
+  const fails = (g.revealCards || []).filter(r=>r==='fail').length;
+  const needDbl = QUEST_CFG[g.players.length].dbl[g.currentQuest];
+  const passed = needDbl ? fails < 2 : fails === 0;
+  g.quests.push({ success:passed, fails, team:[...g.proposeTeam] });
+  g.log.push(`🏰 Quest ${g.currentQuest+1}: ${passed?'✅ สำเร็จ':`❌ ล้มเหลว (Fail ×${fails})`}`);
+  const gw = g.quests.filter(q=>q.success).length;
+  const ew = g.quests.filter(q=>!q.success).length;
+  if (gw >= 3) {
+    const hasAssassin = Object.values(g.assignments).includes('Assassin');
+    if (hasAssassin) { g.phase='assassinate'; g.log.push('🗡️ Assassin มีโอกาสยิง Merlin!'); }
+    else { g.winner='good'; g.phase='end'; g.log.push('🎉 ฝ่ายดีชนะ!'); }
+  } else if (ew >= 3) {
+    g.winner='evil'; g.phase='end'; g.log.push('💀 ฝ่ายชั่วชนะ!');
+  } else {
+    g.currentQuest++;
+    g.leader = (g.leader+1) % g.players.length;
+    g.phase='propose'; g.proposeTeam=[];
+    g.log.push(`➡️ Quest ${g.currentQuest+1} — Leader: ${g.players[g.leader]}`);
+  }
+  g.revealCards = null;
+  g.ts = Date.now();
+  _revealState = null;
+  await pushState(g);
+}
+  const role = game.assignments[myName];
+  if (role !== 'Assassin') { toast('เฉพาะ Assassin เท่านั้น'); return; }
+  const g = clone(game);
+  const merlinName = Object.entries(g.assignments).find(([,r])=>r==='Merlin')?.[0];
+  const hit = target === merlinName;
+  g.winner = hit ? 'evil' : 'good';
+  g.phase = 'end';
+  g.assassinTarget = target;
+  g.log.push(hit
+    ? `🗡️ ${target} คือ Merlin! ฝ่ายชั่วชนะ!`
+    : `🗡️ ${target} ไม่ใช่ Merlin — ฝ่ายดีชนะ!`);
+  g.ts = Date.now();
+  await pushState(g);
+}
+
+async function resetGame() {
+  const g = {
+    phase:'lobby', players:[], host: myName,
+    assignments:{}, leader:0, quests:[], currentQuest:0,
+    proposeTeam:[], voteResults:{}, questResults:{},
+    rejectStreak:0, nightReady:{}, winner:null, log:[], ts:Date.now()
+  };
+  localStorage.removeItem(STORAGE_KEY);
+  await pushState(g);
+}
+
+function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // Header
+  const hdr = el('div','site-header');
+  hdr.innerHTML = `<div class="crest">⚔️</div>
+    <h1>AVALON</h1><div class="sub">THE RESISTANCE</div>`;
+  app.appendChild(hdr);
+
+  if (!myName || !game) { renderLobbyEntry(app); return; }
+
+  if (game.phase === 'lobby') { renderLobby(app); return; }
+  renderGame(app);
+}
+
+// ── LOBBY ENTRY (before name entered) ──
+function renderLobbyEntry(app) {
+  const card = el('div','card');
+  card.innerHTML = `<div class="card-title">เข้าร่วมการผจญภัย</div>`;
+  const inp = el('input','input');
+  inp.placeholder = 'ชื่อของคุณ...';
+  inp.value = myName;
+  inp.id = 'nameInp';
+  card.appendChild(inp);
+
+  const row = el('div','flex-gap mt8');
+  const bHost = el('button','btn btn-gold flex-1'); bHost.textContent = '🏰 สร้างห้อง';
+  const bJoin = el('button','btn btn-ghost flex-1'); bJoin.textContent = '🚪 เข้าร่วม';
+  bHost.onclick = () => { const v=document.getElementById('nameInp').value.trim(); if(v) hostGame(v); else toast('ใส่ชื่อก่อน'); };
+  bJoin.onclick = () => { const v=document.getElementById('nameInp').value.trim(); if(v) joinGame(v); else toast('ใส่ชื่อก่อน'); };
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') bHost.click(); });
+  row.appendChild(bHost); row.appendChild(bJoin);
+  card.appendChild(row);
+  app.appendChild(card);
+
+  const hint = el('p','muted tc mt8');
+  hint.innerHTML = '💡 แชร์ URL หน้านี้ให้เพื่อน → ใส่ชื่อ → กด "เข้าร่วม"';
+  app.appendChild(hint);
+}
+
+// ── WAITING LOBBY ──
+function renderLobby(app) {
+  const isHost = myName === game.host;
+  const card = el('div','card');
+  card.innerHTML = `<div class="card-title">ห้องรอ — ${game.players.length}/10 คน</div>`;
+  game.players.forEach(p => {
+    const row = el('div','player-row');
+    row.innerHTML = `<span>🧑 ${p}</span><span>
+      ${p===game.host?'<span class="tag tag-gold">HOST</span>':''}
+      ${p===myName?'<span class="tag tag-blue">คุณ</span>':''}
+    </span>`;
+    card.appendChild(row);
+  });
+  app.appendChild(card);
+
+  if (isHost) {
+    const btn = el('button',`btn btn-gold btn-block`);
+    btn.textContent = `🚀 เริ่มเกม (${game.players.length} คน)`;
+    btn.disabled = game.players.length < 5;
+    btn.onclick = startGame;
+    app.appendChild(btn);
+    if (game.players.length < 5) {
+      const hint = el('p','muted tc mt8');
+      hint.textContent = `ต้องการอีก ${5-game.players.length} คน`;
+      app.appendChild(hint);
+    }
+  } else {
+    const p = el('p','muted tc mt8');
+    p.textContent = `รอ ${game.host} กดเริ่มเกม...`;
+    app.appendChild(p);
+  }
+}
+
+// ── MAIN GAME ──
+function renderGame(app) {
+  const g = game;
+  const myRole = g.assignments[myName];
+  const ri = myRole ? ROLES[myRole] : null;
+  const leader = g.players[g.leader];
+  const isLeader = leader === myName;
+  const qCfg = QUEST_CFG[g.players.length];
+  const gw = g.quests.filter(q=>q.success).length;
+  const ew = g.quests.filter(q=>!q.success).length;
+
+  // Quest track
+  const track = el('div','quest-track');
+  qCfg.sizes.forEach((size, i) => {
+    const q = g.quests[i];
+    const isCur = i === g.currentQuest && g.phase !== 'end';
+    const pip = el('div','quest-pip');
+    if (q) pip.classList.add(q.success?'success':'fail');
+    else if (isCur) pip.classList.add('active');
+    pip.innerHTML = `
+      <div class="pip-icon">${q?(q.success?'✅':'❌'):isCur?'🔥':'⬜'}</div>
+      <div class="pip-size">${size}คน</div>
+      ${qCfg.dbl[i]?'<div class="pip-dbl">2×</div>':''}`;
+    track.appendChild(pip);
+  });
+  app.appendChild(track);
+
+  // Score
+  const score = el('div','score-bar');
+  score.innerHTML = `
+    <span style="color:var(--good)">✅ ดี: ${gw}</span>
+    <span style="color:var(--evil)">❌ ชั่ว: ${ew}</span>
+    ${g.rejectStreak>0?`<span style="color:var(--evil)">⚠️ ปฏิเสธ: ${g.rejectStreak}/5</span>`:''}`;
+  app.appendChild(score);
+
+  // My role card
+  if (ri) {
+    const rc = el('div',`card role-card ${ri.team}`);
+    const isRevealed = !!document.getElementById('roleReveal')?.dataset.open;
+    rc.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="font-size:22px">${ri.emoji}</span>
+          <span style="font-size:17px;color:${ri.color};font-family:'Cinzel',serif;font-weight:700;margin-left:8px">${myRole}</span>
+          <span class="tag ${ri.team==='good'?'tag-blue':'tag-red'}">${ri.team==='good'?'ฝ่ายดี':'ฝ่ายชั่ว'}</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleReveal()">${window._roleOpen?'ซ่อน 🙈':'ดูบทบาท 👁️'}</button>
+      </div>
+      <div id="roleReveal" style="display:${window._roleOpen?'block':'none'};margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07)">
+        <p style="color:var(--muted);font-size:14px;margin-bottom:8px">${ri.desc}</p>
+        ${getNightInfo(myName,g.assignments).map(l=>`<div class="night-info">${l}</div>`).join('')}
+      </div>`;
+    app.appendChild(rc);
+  }
+
+  // Phase-specific panels
+  if (g.phase === 'night')        renderNight(app, g);
+  if (g.phase === 'propose')      renderPropose(app, g, isLeader, qCfg);
+  if (g.phase === 'vote')         renderVote(app, g);
+  if (g.phase === 'quest')        renderQuest(app, g, ri);
+  if (g.phase === 'reveal')       renderReveal(app, g);
+  if (g.phase === 'assassinate')  renderAssassinate(app, g);
+  if (g.phase === 'end')          renderEnd(app, g);
+
+  // Log
+  if (g.log.length > 0) {
+    const logCard = el('div','card');
+    logCard.innerHTML = `<div class="card-title">📜 ประวัติเกม</div>`;
+    const scroll = el('div','log-scroll');
+    [...g.log].reverse().forEach(l => {
+      const line = el('p','log-line'); line.textContent = l; scroll.appendChild(line);
+    });
+    logCard.appendChild(scroll);
+    app.appendChild(logCard);
+  }
+
+  // Players
+  const plCard = el('div','card');
+  plCard.innerHTML = `<div class="card-title">👥 ผู้เล่น</div>`;
+  const chips = el('div',''); chips.style.display='flex'; chips.style.flexWrap='wrap';
+  g.players.forEach((p,i) => {
+    const chip = el('span','');
+    chip.style.cssText=`display:inline-block;padding:4px 12px;margin:3px;border-radius:20px;font-size:13px;border:1px solid ${i===g.leader&&g.phase!=='end'?'var(--gold)':'rgba(255,255,255,0.08)'};background:${i===g.leader&&g.phase!=='end'?'rgba(201,146,42,0.1)':'transparent'};color:${p===myName?'var(--text)':'var(--muted)'}`;
+    chip.textContent = `${i===g.leader&&g.phase!=='end'?'👑 ':''}${p}${p===myName?' (คุณ)':''}`;
+    chips.appendChild(chip);
+  });
+  plCard.appendChild(chips);
+  app.appendChild(plCard);
+
+  // Reset button
+  const rb = el('button','btn btn-ghost btn-sm');
+  rb.style.cssText='display:block;margin:12px auto 0';
+  rb.textContent = '⬅️ รีเซ็ตเกม';
+  rb.onclick = () => { if(confirm('รีเซ็ตเกมใหม่?')) resetGame(); };
+  app.appendChild(rb);
+}
+
+function renderNight(app, g) {
+  const card = el('div','card');
+  const ready = Object.keys(g.nightReady||{}).length;
+  card.innerHTML = `
+    <div style="text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">🌙</div>
+      <div class="card-title" style="justify-content:center">คืนแห่งความลับ</div>
+      <p class="muted" style="margin-bottom:14px">เปิดดูบทบาทของคุณด้านบน แล้วกดพร้อม<br>รอทุกคน (${ready}/${g.players.length})</p>
+    </div>`;
+  const btn = el('button','btn btn-gold btn-block');
+  btn.textContent = g.nightReady?.[myName] ? '✅ พร้อมแล้ว' : '🌙 พร้อม!';
+  btn.disabled = !!g.nightReady?.[myName];
+  btn.onclick = confirmNight;
+  card.appendChild(btn);
+  app.appendChild(card);
+}
+
+function renderPropose(app, g, isLeader, qCfg) {
+  const card = el('div','card');
+  const max = qCfg.sizes[g.currentQuest];
+  card.innerHTML = `
+    <div class="card-title">🏹 เสนอทีม Quest ${g.currentQuest+1}</div>
+    <p style="font-size:14px;margin-bottom:4px">Leader: <strong style="color:var(--gold-lt)">${g.players[g.leader]}</strong>${isLeader?'<span class="tag tag-gold">คุณ</span>':''}</p>
+    <p class="muted" style="margin-bottom:12px">เลือก ${max} คน (เลือกแล้ว ${g.proposeTeam?.length||0}/${max})</p>
+    <div id="chipWrap"></div>`;
+  app.appendChild(card);
+  const wrap = document.getElementById('chipWrap');
+  g.players.forEach(p => {
+    const selected = g.proposeTeam?.includes(p);
+    const chip = el('button',`player-chip${selected?' selected':''}${!isLeader?' not-leader':''}`);
+    chip.innerHTML = `${selected?'⚔️ ':''}${p}${p===myName?' (คุณ)':''}`;
+    if (isLeader) chip.onclick = () => togglePropose(p);
+    wrap.appendChild(chip);
+  });
+  if (isLeader) {
+    const btn = el('button','btn btn-gold btn-block mt8');
+    btn.textContent = `📜 เสนอทีม (${g.proposeTeam?.length||0}/${max})`;
+    btn.disabled = (g.proposeTeam?.length||0) !== max;
+    btn.onclick = submitProposal;
+    card.appendChild(btn);
+  } else {
+    const p = el('p','muted mt8'); p.textContent = `รอ ${g.players[g.leader]} เลือกทีม...`;
+    card.appendChild(p);
+  }
+}
+
+function renderVote(app, g) {
+  const card = el('div','card');
+  const voted = Object.keys(g.voteResults||{}).length;
+  const myVoted = g.voteResults?.[myName] !== undefined;
+  card.innerHTML = `
+    <div class="card-title">🗳️ โหวตรับรองทีม</div>
+    <p style="font-size:14px;margin-bottom:4px">ทีม: <strong style="color:var(--gold-lt)">${g.proposeTeam?.join(', ')}</strong></p>
+    <p class="muted" style="margin-bottom:14px">โหวตแล้ว ${voted}/${g.players.length} คน</p>`;
+  if (!myVoted) {
+    const row = el('div','vote-row');
+    const ya = el('button','btn btn-green'); ya.textContent='✅ อนุมัติ'; ya.onclick=()=>castVote(true);
+    const na = el('button','btn btn-red');  na.textContent='❌ ปฏิเสธ'; na.onclick=()=>castVote(false);
+    row.appendChild(ya); row.appendChild(na);
+    card.appendChild(row);
+  } else {
+    const p = el('p',''); p.style.color='var(--good)'; p.textContent=`✅ คุณโหวตแล้ว รอคนอื่น... (${voted}/${g.players.length})`;
+    card.appendChild(p);
+  }
+  app.appendChild(card);
+}
+
+function renderQuest(app, g, ri) {
+  const card = el('div','card');
+  const played = Object.keys(g.questResults||{}).length;
+  const inTeam = g.proposeTeam?.includes(myName);
+  const myPlayed = g.questResults?.[myName] !== undefined;
+  card.innerHTML = `
+    <div class="card-title">🏰 ภารกิจ Quest ${g.currentQuest+1}</div>
+    <p style="font-size:14px;margin-bottom:4px">ทีม: <strong style="color:var(--gold-lt)">${g.proposeTeam?.join(', ')}</strong></p>
+    <p class="muted" style="margin-bottom:14px">ส่งการ์ดแล้ว ${played}/${g.proposeTeam?.length} คน</p>`;
+  if (inTeam && !myPlayed) {
+    const p = el('p','muted'); p.style.marginBottom='10px'; p.textContent='เลือกการ์ด (ผู้อื่นมองไม่เห็น):';
+    card.appendChild(p);
+    const row = el('div','vote-row');
+    const sa = el('button','btn btn-green'); sa.textContent='✅ สำเร็จ'; sa.onclick=()=>castQuestCard(true);
+    row.appendChild(sa);
+    if (ri?.team==='evil') {
+      const fa = el('button','btn btn-red'); fa.textContent='❌ ล้มเหลว'; fa.onclick=()=>castQuestCard(false);
+      row.appendChild(fa);
+    }
+    card.appendChild(row);
+  } else if (inTeam && myPlayed) {
+    const p = el('p',''); p.style.color='var(--good)'; p.textContent=`✅ ส่งการ์ดแล้ว รอคนอื่น...`;
+    card.appendChild(p);
+  } else {
+    const p = el('p','muted'); p.textContent='คุณไม่ได้อยู่ในทีม Quest นี้ รอผลลัพธ์...';
+    card.appendChild(p);
+  }
+  app.appendChild(card);
+}
+
+function renderReveal(app, g) {
+  const cards = g.revealCards || [];
+  const total = cards.length;
+
+  // Init local reveal state once per reveal phase
+  if (!_revealState || _revealState.total !== total) {
+    _revealState = { total, revealed: 0, done: false, timer: null };
+    // Start flipping cards one by one
+    _revealState.timer = setInterval(() => {
+      if (_revealState.revealed < total) {
+        _revealState.revealed++;
+        renderRevealCards();
+        // Vibrate on mobile for each card flip
+        if (navigator.vibrate) navigator.vibrate(40);
+      } else {
+        clearInterval(_revealState.timer);
+        _revealState.done = true;
+        renderRevealCards();
+      }
+    }, 1600);
+  }
+
+  const card = el('div','card');
+  const fails = cards.filter(c=>c==='fail').length;
+  const needDbl = QUEST_CFG[g.players.length].dbl[g.currentQuest];
+  const questPassed = needDbl ? fails < 2 : fails === 0;
+
+  card.id = 'revealCard';
+  card.innerHTML = `<div class="card-title" style="text-align:center">🃏 เปิดการ์ด Quest ${g.currentQuest+1}</div>`;
+
+  const counter = el('div','reveal-counter');
+  counter.id = 'revealCounter';
+  counter.textContent = `${_revealState.revealed} / ${total}`;
+  card.appendChild(counter);
+
+  const stage = el('div','reveal-stage');
+  stage.id = 'revealStage';
+  card.appendChild(stage);
+  app.appendChild(card);
+
+  // Render cards based on current revealed count
+  renderRevealCards();
+
+  // If done, show result and continue button
+  if (_revealState.done) {
+    const banner = el('div', `result-banner ${questPassed?'success':'fail'}`);
+    banner.innerHTML = `
+      <div style="font-size:32px">${questPassed?'✅':'❌'}</div>
+      <div style="font-family:'Cinzel',serif;font-size:16px;margin-top:6px;color:${questPassed?'#4ecf6a':'#ff8080'}">
+        ${questPassed?'ภารกิจสำเร็จ!':'ภารกิจล้มเหลว!'}
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">
+        Fail ${fails} ใบ / ${total} ใบ
+        ${needDbl?'(ต้องการ 2 ใบขึ้นไปจึงล้มเหลว)':'(แค่ 1 ใบก็ล้มเหลว)'}
+      </div>`;
+    card.appendChild(banner);
+
+    const btn = el('button','btn btn-gold btn-block');
+    btn.style.marginTop = '14px';
+    btn.textContent = '➡️ ดำเนินเกมต่อ';
+    btn.onclick = resolveQuest;
+    card.appendChild(btn);
+  } else {
+    const suspense = el('div','reveal-suspense');
+    suspense.textContent = '🎴';
+    card.appendChild(suspense);
+  }
+}
+
+function renderRevealCards() {
+  if (!_revealState || !game) return;
+  const cards = game.revealCards || [];
+  const stage = document.getElementById('revealStage');
+  const counter = document.getElementById('revealCounter');
+  if (!stage) return;
+  if (counter) counter.textContent = `${_revealState.revealed} / ${cards.length}`;
+
+  stage.innerHTML = '';
+  cards.forEach((val, i) => {
+    const isFlipped = i < _revealState.revealed;
+    const flipCard = document.createElement('div');
+    flipCard.className = `flip-card${isFlipped?' flipped':''}`;
+
+    flipCard.innerHTML = `
+      <div class="flip-inner">
+        <div class="flip-front">🎴</div>
+        <div class="flip-back ${val}">
+          <span>${val==='success'?'✅':'❌'}</span>
+          <span class="card-label">${val==='success'?'SUCCESS':'FAIL'}</span>
+        </div>
+      </div>`;
+    stage.appendChild(flipCard);
+  });
+
+  // Update suspense/result area if reveal card exists
+  const revealCard = document.getElementById('revealCard');
+  if (!revealCard) return;
+
+  // Remove old suspense/result/button (last children after stage)
+  const children = Array.from(revealCard.children);
+  children.forEach(c => {
+    if (c !== stage && !c.classList.contains('card-title') && c.id !== 'revealCounter') {
+      c.remove();
+    }
+  });
+
+  const fails = cards.filter(c=>c==='fail').length;
+  const needDbl = QUEST_CFG[game.players.length].dbl[game.currentQuest];
+  const questPassed = needDbl ? fails < 2 : fails === 0;
+
+  if (_revealState.done) {
+    const banner = document.createElement('div');
+    banner.className = `result-banner ${questPassed?'success':'fail'}`;
+    banner.innerHTML = `
+      <div style="font-size:32px">${questPassed?'✅':'❌'}</div>
+      <div style="font-family:'Cinzel',serif;font-size:16px;margin-top:6px;color:${questPassed?'#4ecf6a':'#ff8080'}">
+        ${questPassed?'ภารกิจสำเร็จ!':'ภารกิจล้มเหลว!'}
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px">
+        Fail ${fails} ใบ / ${cards.length} ใบ
+        ${needDbl?'(ต้องการ 2 ใบขึ้นไปจึงล้มเหลว)':'(แค่ 1 ใบก็ล้มเหลว)'}
+      </div>`;
+    revealCard.appendChild(banner);
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-gold btn-block';
+    btn.style.marginTop = '14px';
+    btn.textContent = '➡️ ดำเนินเกมต่อ';
+    btn.onclick = resolveQuest;
+    revealCard.appendChild(btn);
+  } else {
+    const suspense = document.createElement('div');
+    suspense.className = 'reveal-suspense';
+    suspense.textContent = '🎴';
+    revealCard.appendChild(suspense);
+  }
+}
+
+function renderAssassinate(app, g) {
+  const isAssassin = g.assignments[myName]==='Assassin';
+  const card = el('div','card');
+  card.innerHTML = `
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:40px">🗡️</div>
+      <div class="card-title" style="justify-content:center;margin-top:8px">Assassin ออกปฏิบัติการ</div>
+      <p class="muted">ฝ่ายดีชนะ Quest — แต่ถ้า Assassin ยิง Merlin ถูก ฝ่ายชั่วชนะ!</p>
+    </div>`;
+  if (isAssassin) {
+    const p = el('p',''); p.style.cssText='font-size:14px;margin-bottom:10px;color:var(--text)';
+    p.textContent='เลือกเป้าหมาย:';
+    card.appendChild(p);
+    const wrap = el('div',''); wrap.style.display='flex'; wrap.style.flexWrap='wrap'; wrap.style.gap='8px';
+    g.players.filter(p=>p!==myName).forEach(t => {
+      const btn = el('button','btn btn-red btn-sm');
+      btn.textContent = t;
+      btn.onclick = () => { if(confirm(`ยิง "${t}" ใช่ไหม?`)) assassinate(t); };
+      wrap.appendChild(btn);
+    });
+    card.appendChild(wrap);
+  } else {
+    const p = el('p','muted tc'); p.textContent='รอ Assassin เลือกเป้าหมาย...';
+    card.appendChild(p);
+  }
+  app.appendChild(card);
+}
+
+function renderEnd(app, g) {
+  const won = g.winner==='good';
+  const card = el('div','card');
+  card.style.borderColor = won?'rgba(110,198,255,0.3)':'rgba(255,107,107,0.3)';
+  card.innerHTML = `
+    <div class="end-banner">
+      <div class="trophy">${won?'🎉':'💀'}</div>
+      <h2 style="color:${won?'var(--good)':'var(--evil)'}">${won?'ฝ่ายดีชนะ!':'ฝ่ายชั่วชนะ!'}</h2>
+    </div>
+    <div class="sep"></div>
+    <div class="card-title">บทบาททั้งหมด</div>`;
+  g.players.forEach(p => {
+    const r = g.assignments[p]; const ri = ROLES[r];
+    const row = el('div','reveal-row');
+    row.innerHTML = `<span>${p}${p===myName?' <span class="tag tag-blue">คุณ</span>':''}</span>
+      <span style="color:${ri?.color}">${ri?.emoji} ${r}</span>`;
+    card.appendChild(row);
+  });
+  const btn = el('button','btn btn-gold btn-block');
+  btn.style.marginTop='16px'; btn.textContent='🔄 เล่นใหม่';
+  btn.onclick = resetGame;
+  card.appendChild(btn);
+  app.appendChild(card);
+}
+
+// ── HELPERS ──
+function el(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+
+window.toggleReveal = function() {
+  window._roleOpen = !window._roleOpen;
+  render();
+};
+
+// ═══════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════
+window._roleOpen = false;
+
+// Load local state first (for refresh resilience)
+game = loadLocal();
+connectChannel();
+render();
+
+// Request state from others after short delay
+setTimeout(() => {
+  if (channel) channel.send({ type:'broadcast', event:'req_state', payload:{ from: myName } });
+}, 800);
+</script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avalon Online 👑</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&display=swap');
+        body { font-family: 'Chakra Petch', sans-serif; background-color: #1a1a2e; color: #e2e8f0; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-[#16213e] rounded-xl p-6 shadow-2xl border border-[#0f3460]">
+        <h1 class="text-3xl font-bold text-center mb-6 text-[#e94560] tracking-wider">🏰 AVALON ONLINE</h1>
+        
+        <div id="lobby-screen" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">ชื่อของคุณ</label>
+                <input type="text" id="username" class="w-full p-2 rounded bg-[#0f3460] text-white border border-gray-600 focus:outline-none focus:border-[#e94560]" placeholder="ใส่ชื่อเท่ๆ">
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button onclick="createRoom()" class="bg-[#e94560] hover:bg-[#ff6b81] text-white font-bold py-2 px-4 rounded transition">สร้างห้องใหม่ ✨</button>
+                <button onclick="joinRoomDirect()" class="bg-[#0f3460] hover:bg-[#1f4068] text-white font-bold py-2 px-4 rounded transition border border-gray-500">เข้าห้องด้วยโค้ด 🔑</button>
+            </div>
+            <div class="text-center text-sm text-gray-400">หรือกดลิงก์ที่เพื่อนส่งมาได้เลย!</div>
+        </div>
+
+        <div id="room-screen" class="hidden space-y-4">
+            <div class="flex justify-between items-center bg-[#0f3460] p-3 rounded">
+                <span class="font-bold">ห้อง: <span id="display-room-code" class="text-[#e94560]"></span></span>
+                <button onclick="copyInviteLink()" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded">📋 ก๊อปปี้ลิงก์ชวนเพื่อน</button>
+            </div>
+            
+            <div>
+                <h3 class="font-medium mb-2 text-gray-300">ผู้เล่นในห้อง (<span id="player-count">0</span>):</h3>
+                <ul id="player-list" class="space-y-1 bg-[#1a1a2e] p-3 rounded max-h-40 overflow-y-auto">
+                    </ul>
+            </div>
+
+            <button id="start-game-btn" onclick="startGame()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded transition shadow-lg hidden">
+                แจกจ่ายบทบาท (เริ่มเกม) 🃏
+            </button>
+            <p id="wait-host-msg" class="text-center text-sm text-yellow-400 italic">รอหัวหน้าห้องกดเริ่มเกม...</p>
+        </div>
+
+        <div id="role-screen" class="hidden text-center space-y-6 py-4">
+            <div class="bg-[#0f3460] p-4 rounded-lg border-2 border-[#e94560]">
+                <h2 class="text-xl text-gray-400 mb-1">บทบาทของคุณคือ</h2>
+                <div id="your-role" class="text-3xl font-bold text-yellow-400 my-2">กำลังโหลด...</div>
+                <p id="role-desc" class="text-sm text-gray-300 px-2"></p>
+            </div>
+            
+            <div id="evil-info" class="bg-red-950/40 p-3 rounded border border-red-800 text-left hidden">
+                <h4 class="text-red-400 font-bold mb-1">🧙‍♂️ ข้อมูลฝ่ายอสูร (สำหรับคุณเท่านั้น):</h4>
+                <ul id="evil-list" class="text-sm list-disc list-inside text-red-200"></ul>
+            </div>
+
+            <button onclick="resetToLobby()" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded transition text-sm">กลับไปหน้าแรก / เล่นใหม่ 🔄</button>
+        </div>
+
+    </div>
+
+    <script>
+        // ตั้งค่า Supabase ด้วยข้อมูลที่คุณเบียร์ให้มา
+        const SUPABASE_URL = "https://dmfkuanwvynixrssfcux.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_A4Hsnu8CxB1rK4wh7vBNDQ_AB-kdNVC";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentRoom = null;
+        let myName = "";
+        let isHost = false;
+        let realtimeChannel = null;
+
+        // ตรวจสอบว่ามี Room Code จาก URL หรือไม่ตอนโหลดหน้าเว็บ
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomParam = urlParams.get('room');
+            if (roomParam) {
+                // ถ้ามีชวนเข้าห้อง ให้สลับหน้าและรอใส่ชื่อ
+                document.getElementById('username').placeholder = "ใส่ชื่อเพื่อเข้าห้อง " + roomParam;
+            }
+        };
+
+        // ฟังก์ชันสร้างห้องใหม่
+        async function createRoom() {
+            myName = document.getElementById('username').value.trim();
+            if (!myName) return alert("กรุณาใส่ชื่อก่อนครับ! 🙏");
+
+            const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+            isHost = true;
+
+            const { data, error } = await supabase
+                .from('avalon_rooms')
+                .insert([{ room_code: roomCode, players: [{ name: myName, role: null, isHost: true }], game_state: 'waiting' }])
+                .select();
+
+            if (error) return alert("สร้างห้องผิดพลาด: " + error.message);
+
+            currentRoom = roomCode;
+            setupRoomUI(roomCode);
+            subscribeToRoom(roomCode);
+        }
+
+        // ฟังก์ชันกดเข้าห้องปกติ/ผ่านลิงก์
+        async function joinRoomDirect() {
+            myName = document.getElementById('username').value.trim();
+            if (!myName) return alert("กรุณาใส่ชื่อก่อนครับ! 🙏");
+
+            const urlParams = new URLSearchParams(window.location.search);
+            let roomCode = urlParams.get('room');
+
+            if (!roomCode) {
+                roomCode = prompt("กรุณาใส่รหัสห้อง 5 หลัก:").toUpperCase();
+            }
+            if (!roomCode) return;
+
+            // ดึงข้อมูลห้องจาก DB
+            const { data, error } = await supabase.from('avalon_rooms').select('*').eq('room_code', roomCode).single();
+            if (error || !data) return alert("ไม่พบห้องนี้ หรือห้องอาจจะปิดไปแล้วครับ ❌");
+            if (data.game_state !== 'waiting') return alert("ห้องนี้เริ่มเกมไปแล้วครับ! 🏹");
+
+            let currentPlayers = data.players || [];
+            if (currentPlayers.find(p => p.name === myName)) {
+                myName = myName + "_" + Math.floor(Math.random() * 10); // กันชื่อซ้ำ
+            }
+
+            currentPlayers.push({ name: myName, role: null, isHost: false });
+
+            // อัปเดตรายชื่อกลับไปใน Supabase
+            await supabase.from('avalon_rooms').update({ players: currentPlayers }).eq('room_code', roomCode);
+
+            currentRoom = roomCode;
+            isHost = false;
+            setupRoomUI(roomCode);
+            subscribeToRoom(roomCode);
+        }
+
+        // ก๊อปปี้ลิงก์ชวนเพื่อน
+        function copyInviteLink() {
+            const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoom}`;
+            navigator.clipboard.writeText(inviteUrl);
+            alert("ก๊อปปี้ลิงก์ชวนเพื่อนแล้ว! ส่งให้เพื่อนใน Line/Messenger ได้เลย 📋🎉");
+        }
+
+        // ตั้งค่า UI หลังจากเข้าห้องสำเร็จ
+        function setupRoomUI(roomCode) {
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('room-screen').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = roomCode;
+            
+            if (isHost) {
+                document.getElementById('start-game-btn').classList.remove('hidden');
+                document.getElementById('wait-host-msg').classList.add('hidden');
+            }
+            // เปลี่ยน URL บน Browser โดยไม่รีโหลดหน้าเว็บ เพื่อให้แชร์ได้ง่าย
+            window.history.pushState({}, '', `?room=${roomCode}`);
+        }
+
+        // เชื่อมต่อ Realtime ซิงค์ข้อมูลกับเพื่อนๆ ในห้อง
+        function subscribeToRoom(roomCode) {
+            realtimeChannel = supabase.channel(`room_${roomCode}`)
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'avalon_rooms', filter: `room_code=eq.${roomCode}` }, 
+                payload => {
+                    handleRoomUpdate(payload.new);
+                })
+                .subscribe();
+
+            // เรียกอัปเดตครั้งแรกเพื่อดึงข้อมูลปัจจุบัน
+            fetchCurrentRoomData(roomCode);
+        }
+
+        async function fetchCurrentRoomData(roomCode) {
+            const { data } = await supabase.from('avalon_rooms').select('*').eq('room_code', roomCode).single();
+            if (data) handleRoomUpdate(data);
+        }
+
+        // จัดการเมื่อข้อมูลในห้องมีการเปลี่ยนแปลง
+        function handleRoomUpdate(roomData) {
+            const players = roomData.players || [];
+            document.getElementById('player-count').innerText = players.length;
+            
+            // แสดงรายชื่อผู้เล่น
+            const listEl = document.getElementById('player-list');
+            listEl.innerHTML = "";
+            players.forEach(p => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between text-sm py-1 border-b border-gray-800";
+                li.innerHTML = `<span>👤 ${p.name}</span> ${p.isHost ? '<span class="text-xs bg-yellow-600 px-1 rounded text-white">👑 Host</span>' : ''}`;
+                listEl.appendChild(li);
+            });
+
+            // ถ้าสถานะเปลี่ยนเป็นเริ่มเกมแล้ว ให้ไปหน้าจอบทบาท
+            if (roomData.game_state === 'roles_assigned') {
+                showRoleScreen(players);
+            }
+        }
+
+        // ระบบสุ่มแจกบทบาท (ฝั่ง Host เป็นคนคำนวณ)
+        async function startGame() {
+            const { data } = await supabase.from('avalon_rooms').select('*').eq('room_code', currentRoom).single();
+            let players = data.players;
+            
+            if (players.length < 5) {
+                return alert("เกม Avalon ต้องมีผู้เล่นอย่างน้อย 5 คนขึ้นไปครับ! 👥");
+            }
+
+            // กำหนดบทบาทตามจำนวนคนเล่น (ตัวอย่างมาตรฐานขั้นต่ำ)
+            // 5 คน: ดี 3 (Merlin, Percival, Loyal), ร้าย 2 (Mordred, Assassin) เป็นต้น
+            let rolesPool = [];
+            const count = players.length;
+            
+            if (count === 5) rolesPool = ['Merlin 🧙‍♂️ (ดี)', 'Percival 🛡️ (ดี)', 'Loyal Servant 🧑 (ดี)', 'Assassin 🗡️ (ร้าย)', 'Morgana 🔮 (ร้าย)'];
+            else if (count === 6) rolesPool = ['Merlin 🧙‍♂️ (ดี)', 'Percival 🛡️ (ดี)', 'Loyal Servant 🧑 (ดี)', 'Loyal Servant 🧑 (ดี)', 'Assassin 🗡️ (ร้าย)', 'Morgana 🔮 (ร้าย)'];
+            else {
+                // เกิน 6 คน เติมบทบาทพื้นฐานให้ครบตามจำนวนคน
+                rolesPool = ['Merlin 🧙‍♂️ (ดี)', 'Percival 🛡️ (ดี)', 'Assassin 🗡️ (ร้าย)', 'Morgana 🔮 (ร้าย)'];
+                while(rolesPool.length < count) {
+                    if (rolesPool.filter(r => r.includes('ร้าย')).length < Math.ceil(count/3)) {
+                        rolesPool.push('Minion of Mordred 😈 (ร้าย)');
+                    } else {
+                        rolesPool.push('Loyal Servant 🧑 (ดี)');
+                    }
+                }
+            }
+
+            // สลับบทบาทแบบสุ่ม (Shuffle)
+            rolesPool.sort(() => Math.random() - 0.5);
+
+            // ใส่บทบาทให้ผู้เล่นทุกคน
+            players = players.map((p, index) => {
+                p.role = rolesPool[index];
+                return p;
+            });
+
+            // อัปเดตลงเซิร์ฟเวอร์เพื่อให้ทุกคนได้รับรู้พร้อมกัน
+            await supabase.from('avalon_rooms').update({
+                players: players,
+                game_state: 'roles_assigned'
+            }).eq('room_code', currentRoom);
+        }
+
+        // หน้าจอแสดงบทบาทของตัวเอง
+        function showRoleScreen(players) {
+            document.getElementById('room-screen').classList.add('hidden');
+            document.getElementById('role-screen').classList.remove('hidden');
+
+            const me = players.find(p => p.name === myName);
+            if (!me) return;
+
+            const myRole = me.role;
+            document.getElementById('your-role').innerText = myRole;
+
+            // ค้นหาคนที่เป็นฝ่ายร้ายทั้งหมดเพื่อเอาไว้แสดงให้คนเล่นฝั่งร้ายเห็นกันเอง
+            const evilPlayers = players.filter(p => p.role.includes('ร้าย')).map(p => p.name);
+
+            const descEl = document.getElementById('role-desc');
+            const evilInfoEl = document.getElementById('evil-info');
+            const evilListEl = document.getElementById('evil-list');
+
+            evilInfoEl.classList.add('hidden');
+
+            if (myRole.includes('Merlin')) {
+                descEl.innerText = "คุณรู้ว่าใครคือฝ่ายร้าย (ยกเว้น Mordred ถ้ามี) แต่ห้ามให้ฝ่ายร้ายจับได้ตอนจบเกมเด็ดขาดว่าคุณคือเมอร์ลิน!";
+            } else if (myRole.includes('Percival')) {
+                descEl.innerText = "คุณจะมองเห็นผู้เล่นที่เป็น Merlin และ Morgana แต่คุณต้องแยกแยะให้ออกว่าใครคือเมอร์ลินตัวจริง!";
+            } else if (myRole.includes('ร้าย')) {
+                descEl.innerText = "คุณคือฝ่ายอสูร ทำลายภารกิจของฝ่ายดี และพยายามตามหา Merlin ให้เจอเพื่อลอบสังหารตอนจบเกม!";
+                // แสดงรายชื่อเพื่อนร่วมแก๊งค์ฝ่ายร้าย
+                evilInfoEl.classList.remove('hidden');
+                evilListEl.innerHTML = evilPlayers.map(name => `<li>${name} ${name === myName ? '(คุณ)' : ''}</li>`).join('');
+            } else {
+                descEl.innerText = "คุณคืออัศวินผู้ภักดีต่ออาเธอร์ ทำภารกิจให้สำเร็จและช่วยปกป้อง Merlin!";
+            }
+        }
+
+        function resetToLobby() {
+            if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+            window.history.pushState({}, '', window.location.pathname); // ล้างค่าใน URL
+            location.reload();
+        }
+    </script>
+</body>
+</html>
